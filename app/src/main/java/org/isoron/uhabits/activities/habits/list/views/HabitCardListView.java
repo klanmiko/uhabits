@@ -20,6 +20,7 @@
 package org.isoron.uhabits.activities.habits.list.views;
 
 import android.content.*;
+import android.gesture.Gesture;
 import android.support.annotation.*;
 import android.support.v7.widget.*;
 import android.support.v7.widget.helper.*;
@@ -134,9 +135,8 @@ public class HabitCardListView extends RecyclerView
         cardView.setController(cardController);
         cardController.setView(cardView);
 
-        GestureDetector detector = new GestureDetector(getContext(),
-            new CardViewGestureDetector(position, holder));
-
+        GestureDetector detector  = new GestureDetector(getContext(),
+                new CardViewGestureDetector(position, holder));
         cardView.setOnTouchListener((v, ev) -> {
             detector.onTouchEvent(ev);
             return true;
@@ -153,6 +153,8 @@ public class HabitCardListView extends RecyclerView
         void onItemLongClick(int pos);
 
         void startDrag(int position);
+
+        void stopDrag();
     }
 
     private class CardViewGestureDetector
@@ -222,6 +224,15 @@ public class HabitCardListView extends RecyclerView
         public void onSwiped(ViewHolder viewHolder, int direction)
         {
             // NOP
+        }
+        @Override
+        public void onSelectedChanged(ViewHolder viewHolder, int actionState){
+            switch(actionState)
+            {
+                case ItemTouchHelper.ACTION_STATE_IDLE:
+                    controller.stopDrag();
+                    break;
+            }
         }
     }
 }
