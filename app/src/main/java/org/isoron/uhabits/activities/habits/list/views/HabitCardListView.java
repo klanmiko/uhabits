@@ -20,7 +20,6 @@
 package org.isoron.uhabits.activities.habits.list.views;
 
 import android.content.*;
-import android.gesture.Gesture;
 import android.support.annotation.*;
 import android.support.v7.widget.*;
 import android.support.v7.widget.helper.*;
@@ -45,13 +44,18 @@ public class HabitCardListView extends RecyclerView
 
     private int checkmarkCount;
 
+    private boolean dragging;
+
+    List<HabitCardViewHolder> selected;
+
     public HabitCardListView(Context context, AttributeSet attrs)
     {
         super(context, attrs);
+        selected = new ArrayList<HabitCardViewHolder>();
+        dragging=false;
         setLongClickable(true);
         setHasFixedSize(true);
         setLayoutManager(new LinearLayoutManager(getContext()));
-
         TouchHelperCallback callback = new TouchHelperCallback();
         touchHelper = new ItemTouchHelper(callback);
         touchHelper.attachToRecyclerView(this);
@@ -125,7 +129,14 @@ public class HabitCardListView extends RecyclerView
         if (adapter != null) adapter.onDetached();
         super.onDetachedFromWindow();
     }
-
+    protected void toggleSelection(HabitCardViewHolder holder){
+        if(!selected.contains(holder)){
+            selected.add(holder);
+        }
+        else{
+            selected.remove(holder);
+        }
+    }
     protected void setupCardViewController(@NonNull HabitCardViewHolder holder,
                                            int position)
     {
@@ -142,7 +153,6 @@ public class HabitCardListView extends RecyclerView
             return true;
         });
     }
-
     public interface Controller
         extends CheckmarkButtonController.Listener, HabitCardController.Listener
     {
@@ -175,13 +185,15 @@ public class HabitCardListView extends RecyclerView
         @Override
         public void onLongPress(MotionEvent e)
         {
+            toggleSelection(holder);
             if (controller != null) controller.onItemLongClick(position);
-            touchHelper.startDrag(holder);
+            //touchHelper.startDrag(holder);
         }
 
         @Override
         public boolean onSingleTapUp(MotionEvent e)
         {
+            if(!selected.isEmpty()) toggleSelection(holder);
             if (controller != null) controller.onItemClick(position);
             return true;
         }
@@ -215,6 +227,7 @@ public class HabitCardListView extends RecyclerView
                               ViewHolder from,
                               ViewHolder to)
         {
+            dragging=true;
             if (controller == null) return false;
             controller.drop(from.getAdapterPosition(), to.getAdapterPosition());
             return true;
@@ -230,7 +243,11 @@ public class HabitCardListView extends RecyclerView
             switch(actionState)
             {
                 case ItemTouchHelper.ACTION_STATE_IDLE:
-                    controller.stopDrag();
+                    if(dragging) {
+                        if(controller!=null) controller.stopDrag();
+                        selected.clear();
+                        dragging=false;
+                    }
                     break;
             }
         }
