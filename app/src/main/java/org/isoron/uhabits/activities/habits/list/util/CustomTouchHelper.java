@@ -1,4 +1,4 @@
-package org.isoron.uhabits.activities.habits.list.views;
+package org.isoron.uhabits.activities.habits.list.util;
 
 import android.content.res.Resources;
 import android.graphics.Canvas;
@@ -27,6 +27,8 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewParent;
 import android.view.animation.Interpolator;
+
+import org.isoron.uhabits.activities.habits.list.views.HabitCardListView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -136,7 +138,7 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
     /**
      * Currently selected view holder
      */
-    ViewHolder mSelected = null;
+    List<DraggableInfo> mSelected = null;
 
     /**
      * The reference coordinates for the action start. For drag & drop, this is the time long
@@ -216,7 +218,7 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
         public void run() {
             if (mSelected != null && scrollIfNecessary()) {
                 if (mSelected != null) { //it might be lost during scrolling
-                    moveIfNecessary(mSelected);
+                    moveIfNecessary(mSelected.get(mSelected.size()-1));
                 }
                 mRecyclerView.removeCallbacks(mScrollRunnable);
                 ViewCompat.postOnAnimation(mRecyclerView, this);
@@ -282,7 +284,7 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
                         if (mPendingCleanup.remove(animation.mViewHolder.itemView)) {
                             mCallback.clearView(mRecyclerView, animation.mViewHolder);
                         }
-                        select(animation.mViewHolder, animation.mActionState);
+                        select(new DraggableInfo(animation.mViewHolder,0f,0f,0f,0f), animation.mActionState);
                         updateDxDy(event, mSelectedFlags, 0);
                     }
                 }
@@ -325,16 +327,13 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
             if (activePointerIndex >= 0) {
                 checkSelectForSwipe(action, event, activePointerIndex);
             }
-            ViewHolder viewHolder = mSelected;
-            if (viewHolder == null) {
-                return;
-            }
+            if(mSelected==null) return;
             switch (action) {
                 case MotionEvent.ACTION_MOVE: {
                     // Find the index of the active pointer and fetch its position
                     if (activePointerIndex >= 0) {
                         updateDxDy(event, mSelectedFlags, activePointerIndex);
-                        moveIfNecessary(viewHolder);
+                        for(ViewHolder viewHolder:mSelected) moveIfNecessary(viewHolder);
                         mRecyclerView.removeCallbacks(mScrollRunnable);
                         mScrollRunnable.run();
                         mRecyclerView.invalidate();
@@ -384,17 +383,8 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
      */
     private long mDragScrollStartTimeInMs;
 
-    /**
-     * Creates an ItemTouchHelper that will work with the given Callback.
-     * <p>
-     * You can attach ItemTouchHelper to a RecyclerView via
-     * {@link #attachToRecyclerView(RecyclerView)}. Upon attaching, it will add an item decoration,
-     * an onItemTouchListener and a Child attach / detach listener to the RecyclerView.
-     *
-     * @param callback The Callback which controls the behavior of this touch helper.
-     */
-    public ItemTouchHelper(Callback callback) {
-        mCallback = callback;
+    public CustomTouchHelper(Callback callback) {
+        this.mCallback = callback;
     }
 
     private static boolean hitTest(View child, float x, float y, float left, float top) {
@@ -510,19 +500,19 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
      * @param actionState The type of action
      */
     private void select(DraggableInfo selected, int actionState) {
-        if (selected == mSelected && actionState == mActionState) {
+        if (mSelected.contains(selected) && actionState == mActionState) {
             return;
         }
         mDragScrollStartTimeInMs = Long.MIN_VALUE;
         final int prevActionState = mActionState;
         // prevent duplicate animations
-        endRecoverAnimation(selected, true);
+        endRecoverAnimation(selected.holder, true);
         mActionState = actionState;
         if (actionState == ACTION_STATE_DRAG) {
             // we remove after animation is complete. this means we only elevate the last drag
             // child but that should perform good enough as it is very hard to start dragging a
             // new child before the previous one settles.
-            mOverdrawChild = selected.itemView;
+            mOverdrawChild = selected.holder.itemView;
             addChildDrawingOrderCallback();
         }
         int actionStateMask = (1 << (DIRECTION_FLAG_COUNT + DIRECTION_FLAG_COUNT * actionState))
@@ -959,7 +949,7 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
         }
         mDx = mDy = 0f;
         mActivePointerId = MotionEventCompat.getPointerId(motionEvent, 0);
-        select(vh, ACTION_STATE_SWIPE);
+        select(new DraggableInfo(vh,0f,0f,0f,0f), ACTION_STATE_SWIPE);
         return true;
     }
 
@@ -968,9 +958,11 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
         final float x = event.getX();
         final float y = event.getY();
         if (mSelected != null) {
-            final View selectedView = mSelected.itemView;
-            if (hitTest(selectedView, x, y, mSelectedStartX + mDx, mSelectedStartY + mDy)) {
-                return selectedView;
+            for(DraggableInfo di:mSelected) {
+                final View selectedView = di.holder.itemView;
+                if (hitTest(selectedView, x, y, mSelectedStartX + mDx, mSelectedStartY + mDy)) {
+                    return selectedView;
+                }
             }
         }
         for (int i = mRecoverAnimations.size() - 1; i >= 0; i--) {
@@ -1029,7 +1021,7 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
         }
         obtainVelocityTracker();
         mDx = mDy = 0f;
-        select(viewHolder, ACTION_STATE_DRAG);
+        select(new DraggableInfo(viewHolder,0f,0f,0f,0f), ACTION_STATE_DRAG);
     }
 
     /**
@@ -1076,7 +1068,7 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
         }
         obtainVelocityTracker();
         mDx = mDy = 0f;
-        select(viewHolder, ACTION_STATE_SWIPE);
+        select(new DraggableInfo(viewHolder,0f,0f,0f,0f), ACTION_STATE_SWIPE);
     }
 
     private RecoverAnimation findAnimation(MotionEvent event) {
@@ -1899,11 +1891,11 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
         }
 
         private void onDraw(Canvas c, RecyclerView parent, ViewHolder selected,
-                            List<ItemTouchHelper.RecoverAnimation> recoverAnimationList,
+                            List<RecoverAnimation> recoverAnimationList,
                             int actionState, float dX, float dY) {
             final int recoverAnimSize = recoverAnimationList.size();
             for (int i = 0; i < recoverAnimSize; i++) {
-                final ItemTouchHelper.RecoverAnimation anim = recoverAnimationList.get(i);
+                final RecoverAnimation anim = recoverAnimationList.get(i);
                 anim.update();
                 final int count = c.save();
                 onChildDraw(c, parent, anim.mViewHolder, anim.mX, anim.mY, anim.mActionState,
@@ -2245,7 +2237,7 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
                                     "onlong press: x:" + mInitialTouchX + ",y:" + mInitialTouchY);
                         }
                         if (mCallback.isLongPressDragEnabled()) {
-                            select(vh, ACTION_STATE_DRAG);
+                            select(new DraggableInfo(vh,0f,0f,0f,0f), ACTION_STATE_DRAG);
                         }
                     }
                 }
@@ -2365,8 +2357,8 @@ public class CustomTouchHelper extends RecyclerView.ItemDecoration implements Re
         }
     }
     private class DraggableInfo{
-        ViewHolder holder;
-        float mDy,mDx,mSelectedStartX,mSelectedStartY;
+        public ViewHolder holder;
+        public float mDy,mDx,mSelectedStartX,mSelectedStartY;
         public DraggableInfo(ViewHolder holder,float mDy,float mDx,float mSelectedStartX,float mSelectedStartY){
             this.mDx = mDx;
             this.mDy = mDy;

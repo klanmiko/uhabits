@@ -26,6 +26,7 @@ import android.support.v7.widget.helper.*;
 import android.util.*;
 import android.view.*;
 
+import org.isoron.uhabits.activities.habits.list.util.CustomTouchHelper;
 import org.isoron.uhabits.models.*;
 import org.isoron.uhabits.activities.habits.list.controllers.*;
 import org.isoron.uhabits.activities.habits.list.model.*;
@@ -40,7 +41,7 @@ public class HabitCardListView extends RecyclerView
     @Nullable
     private Controller controller;
 
-    private final ItemTouchHelper touchHelper;
+    private final CustomTouchHelper touchHelper;
 
     private int checkmarkCount;
 
@@ -57,7 +58,7 @@ public class HabitCardListView extends RecyclerView
         setHasFixedSize(true);
         setLayoutManager(new LinearLayoutManager(getContext()));
         TouchHelperCallback callback = new TouchHelperCallback();
-        touchHelper = new ItemTouchHelper(callback);
+        touchHelper = new CustomTouchHelper(callback);
         touchHelper.attachToRecyclerView(this);
     }
 
@@ -199,14 +200,14 @@ public class HabitCardListView extends RecyclerView
         }
     }
 
-    class TouchHelperCallback extends ItemTouchHelper.Callback
+    class TouchHelperCallback extends CustomTouchHelper.Callback
     {
         @Override
         public int getMovementFlags(RecyclerView recyclerView,
                                     ViewHolder viewHolder)
         {
-            int dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
-            int swipeFlags = ItemTouchHelper.START | ItemTouchHelper.END;
+            int dragFlags = CustomTouchHelper.UP | CustomTouchHelper.DOWN;
+            int swipeFlags = CustomTouchHelper.START | CustomTouchHelper.END;
             return makeMovementFlags(dragFlags, swipeFlags);
         }
 
@@ -242,7 +243,7 @@ public class HabitCardListView extends RecyclerView
         public void onSelectedChanged(ViewHolder viewHolder, int actionState){
             switch(actionState)
             {
-                case ItemTouchHelper.ACTION_STATE_IDLE:
+                case CustomTouchHelper.ACTION_STATE_IDLE:
                     if(dragging) {
                         if(controller!=null) controller.stopDrag();
                         selected.clear();
