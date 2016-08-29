@@ -47,12 +47,12 @@ public class HabitCardListView extends RecyclerView
 
     private boolean dragging;
 
-    List<HabitCardViewHolder> selected;
+    List<ViewHolder> selected;
 
     public HabitCardListView(Context context, AttributeSet attrs)
     {
         super(context, attrs);
-        selected = new ArrayList<HabitCardViewHolder>();
+        selected = new ArrayList<ViewHolder>();
         dragging=false;
         setLongClickable(true);
         setHasFixedSize(true);
@@ -188,7 +188,7 @@ public class HabitCardListView extends RecyclerView
         {
             toggleSelection(holder);
             if (controller != null) controller.onItemLongClick(position);
-            //touchHelper.startDrag(holder);
+            touchHelper.startDragMultiple(selected);
         }
 
         @Override
